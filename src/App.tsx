@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { ChatInterface } from './components/ChatInterface';
 import { useChat } from './hooks/useChat';
 import { JarvisAPI } from './services/api';
