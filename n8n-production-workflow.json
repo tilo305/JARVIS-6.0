@@ -1,0 +1,553 @@
+{
+  "name": "JARVIS Voice Assistant Production",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "15765e0d-84ab-44d4-88de-3ad51761f52d/chat",
+        "responseMode": "responseNode",
+        "options": {
+          "cors": {
+            "allowedOrigins": "*",
+            "allowedMethods": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE",
+              "OPTIONS"
+            ],
+            "allowedHeaders": "*"
+          }
+        }
+      },
+      "id": "c8e6b6a1-4b5a-4c7d-8e9f-1a2b3c4d5e6f",
+      "name": "Text Chat Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "15765e0d-84ab-44d4-88de-3ad51761f52d/voice",
+        "responseMode": "responseNode",
+        "options": {
+          "cors": {
+            "allowedOrigins": "*",
+            "allowedMethods": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE",
+              "OPTIONS"
+            ],
+            "allowedHeaders": "*"
+          },
+          "rawBody": true
+        }
+      },
+      "id": "d9f7a8b2-5c6b-4d8e-9f0a-2b3c4d5e6f7a",
+      "name": "Voice Chat Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        200,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "15765e0d-84ab-44d4-88de-3ad51761f52d/health",
+        "responseMode": "responseNode",
+        "options": {
+          "cors": {
+            "allowedOrigins": "*"
+          }
+        }
+      },
+      "id": "e0a8b9c3-6d7c-4e9f-a01b-3c4d5e6f7b8c",
+      "name": "Health Check",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        200,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "healthy"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{$now.toISO()}}"
+            },
+            {
+              "name": "service",
+              "value": "JARVIS Assistant"
+            }
+          ],
+          "boolean": [
+            {
+              "name": "openai",
+              "value": true
+            },
+            {
+              "name": "elevenlabs",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f1b9c0d4-7e8d-4f0a-b12c-4d5e6f7c8d9e",
+      "name": "Health Status",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract form data from multipart request\nconst items = [];\nconst formData = $input.all();\n\nfor (const item of formData) {\n  const audioFile = item.binary?.audio;\n  const conversationId = item.json?.conversationId || 'default';\n  const timestamp = item.json?.timestamp || new Date().toISOString();\n  \n  if (audioFile) {\n    items.push({\n      json: {\n        conversationId: conversationId,\n        timestamp: timestamp\n      },\n      binary: {\n        audio: audioFile\n      }\n    });\n  }\n}\n\nreturn items.length > 0 ? items : formData;"
+      },
+      "id": "a2c1d3e5-8f9a-4b1c-c23d-5e6f7a8b9c1d",
+      "name": "Process Voice Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "model": "whisper-1",
+        "options": {
+          "temperature": 0.2,
+          "language": "en",
+          "responseFormat": "json"
+        }
+      },
+      "id": "b3d2e4f6-9a0b-4c2d-d34e-6f7a8b9c0d2e",
+      "name": "Transcribe Audio",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [
+        600,
+        500
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are JARVIS, Tony Stark's AI assistant from the Iron Man movies. Your personality:\n\n1. British sophistication and formality\n2. Highly intelligent and technically proficient\n3. Subtle wit and dry humor\n4. Loyal and protective\n5. Professional but with distinct personality\n\nCommunication style:\n- Address users as 'Sir' or 'Miss' appropriately\n- Keep responses concise (2-3 sentences) unless more detail is requested\n- Include technical details when relevant\n- Occasionally reference the Marvel universe naturally\n- Never break character\n- Use sophisticated vocabulary with British expressions\n\nExample responses:\n- \"Good evening, sir. The weather forecast indicates a 78% chance of precipitation. Might I suggest the Mark VII suit for today's activities?\"\n- \"I've analyzed the situation, sir. While your approach has a certain... creative flair, might I propose a more conventional solution?\"\n- \"Of course, sir. Initiating the requested protocol now. Do try not to break anything expensive this time.\""
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.message || $json.transcription || $json.text || 'Hello JARVIS' }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 500,
+          "topP": 0.9,
+          "frequencyPenalty": 0.3,
+          "presencePenalty": 0.3
+        }
+      },
+      "id": "c4e3f5a7-0b1c-4d3e-e45f-7a8b9c0d1e3f",
+      "name": "Generate AI Response",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [
+        800,
+        400
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.elevenlabs.io/v1/text-to-speech/{{ $json.voiceId || 'REPLACE_WITH_YOUR_VOICE_ID' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "audio/mpeg"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.message.content || $json.text || 'Hello, sir. How may I assist you today?' }}"
+            },
+            {
+              "name": "model_id",
+              "value": "eleven_monolingual_v1"
+            },
+            {
+              "name": "voice_settings",
+              "value": "={\"stability\": 0.75, \"similarity_boost\": 0.75, \"style\": 0.5, \"use_speaker_boost\": true}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "d5f4a6b8-1c2d-4e4f-f56a-8b9c0d1e2f4a",
+      "name": "Generate Voice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_ELEVENLABS_CREDENTIAL_ID",
+          "name": "ElevenLabs API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"text\": \"{{ $('Generate AI Response').item.json.message.content || 'I apologize, sir. I seem to be experiencing technical difficulties.' }}\",\n  \"audioUrl\": null,\n  \"audioBase64\": \"{{ $('Generate Voice').item.binary.data ? $('Generate Voice').item.binary.data.data : null }}\",\n  \"conversationId\": \"{{ $json.conversationId || $('Text Chat Webhook').item.json.conversationId || $('Voice Chat Webhook').item.json.conversationId || 'default' }}\",\n  \"transcription\": \"{{ $json.transcription || null }}\",\n  \"timestamp\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\"\n}",
+        "options": {}
+      },
+      "id": "e6a5b7c9-2d3e-4f5a-a67b-9c0d1e2f3a5b",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "0d8e3f4a-5b6c-4d7e-8f9a-1b2c3d4e5f6a",
+              "leftValue": "={{ $('Voice Chat Webhook').item ? true : false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f7b6c8d0-3e4f-4a6b-b78c-0d1e2f3a4b6c",
+      "name": "Is Voice Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge transcription data with conversation context\nconst items = [];\nconst inputData = $input.all();\n\nfor (const item of inputData) {\n  const transcribedText = item.json?.text || item.json?.transcription || '';\n  const conversationId = item.json?.conversationId || 'default';\n  const timestamp = item.json?.timestamp || new Date().toISOString();\n  \n  items.push({\n    json: {\n      transcription: transcribedText,\n      message: transcribedText,\n      conversationId: conversationId,\n      timestamp: timestamp,\n      isVoice: true\n    }\n  });\n}\n\nreturn items;"
+      },
+      "id": "a8c7d9e1-4f5a-5b7c-c89d-1e2f3a4b5c7d",
+      "name": "Merge Transcription",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "values": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, PUT, DELETE, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              }
+            ]
+          }
+        }
+      },
+      "id": "b9d8e0f2-5a6b-4c8d-d9ea-2f3a4b5c6d8e",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1400,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "values": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "c0e9f1a3-6b7c-4d9e-e0ab-3f4a5b6c7d9f",
+      "name": "Send Health Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        600,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle errors gracefully\nconst error = $json.error || 'An unexpected error occurred';\nconst errorResponse = {\n  text: \"I apologize, sir. I'm experiencing technical difficulties. Please try again momentarily.\",\n  audioUrl: null,\n  audioBase64: null,\n  conversationId: $json.conversationId || 'default',\n  timestamp: new Date().toISOString(),\n  status: 'error',\n  error: error\n};\n\nreturn [{ json: errorResponse }];"
+      },
+      "id": "d1f0a2b4-7c8d-4e9f-f1bc-4a5b6c7d8e0a",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        600
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Text Chat Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is Voice Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice Chat Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Voice Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Health Check": {
+      "main": [
+        [
+          {
+            "node": "Health Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Health Status": {
+      "main": [
+        [
+          {
+            "node": "Send Health Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Voice Input": {
+      "main": [
+        [
+          {
+            "node": "Transcribe Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe Audio": {
+      "main": [
+        [
+          {
+            "node": "Merge Transcription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Voice Message?": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Voice Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Transcription": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Response": {
+      "main": [
+        [
+          {
+            "node": "Generate Voice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Voice": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "",
+    "executionTimeout": 30
+  },
+  "versionId": "d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "15765e0d-84ab-44d4-88de-3ad51761f52d"
+  },
+  "id": "jarvis-production-workflow",
+  "tags": []
+}
