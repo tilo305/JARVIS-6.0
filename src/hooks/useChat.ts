@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Message } from '../types';
 import { JarvisAPI } from '../services/api';
 import { generateId, Logger, playAudioSafely } from '../utils/helpers';
@@ -10,7 +10,8 @@ export const useChat = () => {
   const [conversationId] = useState(() => generateId());
   const [error, setError] = useState<string | null>(null);
 
-  const api = JarvisAPI.getInstance();
+  // Use useMemo to prevent API instance recreation
+  const api = useMemo(() => JarvisAPI.getInstance(), []);
 
   // Add welcome message on mount
   useEffect(() => {
@@ -31,7 +32,14 @@ export const useChat = () => {
       timestamp: new Date(),
       audioUrl,
     };
-    setMessages(prev => [...prev, message]);
+    setMessages(prev => {
+      // Limit messages to prevent memory issues
+      const maxMessages = 100;
+      if (prev.length >= maxMessages) {
+        return [...prev.slice(-maxMessages + 1), message];
+      }
+      return [...prev, message];
+    });
     return message;
   }, []);
 
@@ -56,23 +64,34 @@ export const useChat = () => {
           // Handle base64 audio from n8n
           if (response.audioUrl.startsWith('data:audio/')) {
             // Convert base64 to blob and play
-            fetch(response.audioUrl)
+            const audioPromise = fetch(response.audioUrl)
               .then(res => res.blob())
               .then(blob => {
                 const url = URL.createObjectURL(blob);
                 const audio = new Audio(url);
                 audio.volume = 0.8;
-                audio.play().then(() => {
-                  // Clean up blob URL after playing
-                  setTimeout(() => URL.revokeObjectURL(url), 1000);
-                }).catch(err => {
-                  Logger.warn('Audio playback failed', err);
+                
+                // Clean up function
+                const cleanup = () => {
                   URL.revokeObjectURL(url);
+                  audio.removeEventListener('ended', cleanup);
+                  audio.removeEventListener('error', cleanup);
+                };
+                
+                audio.addEventListener('ended', cleanup);
+                audio.addEventListener('error', cleanup);
+                
+                return audio.play().catch(err => {
+                  Logger.warn('Audio playback failed', err);
+                  cleanup();
                 });
               })
               .catch(err => {
                 Logger.warn('Failed to fetch audio:', err);
               });
+              
+            // Don't await - let it play in background
+            audioPromise.catch(() => {}); // Silent catch
           } else {
             // Regular URL
             await playAudioSafely(response.audioUrl);

@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { ChatInterface } from './components/ChatInterface';
 import { useChat } from './hooks/useChat';
 import { JarvisAPI } from './services/api';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './styles/jarvis-theme.css';
 
 function App() {
@@ -14,23 +15,40 @@ function App() {
   } = useChat();
 
   const [isHealthy, setIsHealthy] = useState(true);
+  const [inputValue, setInputValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Health check on mount
   useEffect(() => {
+    let isMounted = true;
+    
     const checkHealth = async () => {
-      const api = JarvisAPI.getInstance();
-      const healthy = await api.checkHealth();
-      setIsHealthy(healthy);
+      try {
+        const api = JarvisAPI.getInstance();
+        const healthy = await api.checkHealth();
+        if (isMounted) {
+          setIsHealthy(healthy);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setIsHealthy(false);
+        }
+      }
     };
 
     checkHealth();
     // Check health every 30 seconds
     const interval = setInterval(checkHealth, 30000);
-    return () => clearInterval(interval);
+    
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   return (
-    <div className="jarvis-app">
+    <ErrorBoundary>
+      <div className="jarvis-app">
       {/* Iron Man Video Background */}
       <div className="video-background">
         <video
@@ -81,13 +99,18 @@ function App() {
           <div className="chat-input-area">
             <div className="input-container">
               <input
+                ref={inputRef}
                 type="text"
                 placeholder="Type your message..."
                 className="text-input"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                    sendTextMessage(e.currentTarget.value.trim());
-                    e.currentTarget.value = '';
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && inputValue.trim() && !isProcessing) {
+                    e.preventDefault();
+                    sendTextMessage(inputValue.trim());
+                    setInputValue('');
+                    inputRef.current?.focus();
                   }
                 }}
                 disabled={isProcessing}
@@ -121,6 +144,7 @@ function App() {
         </div>
       </div>
     </div>
+    </ErrorBoundary>
   );
 }
 
