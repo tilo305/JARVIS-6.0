@@ -1,0 +1,364 @@
+{
+  "name": "JARVIS Voice Assistant Complete Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat",
+        "responseMode": "responseNode",
+        "options": {
+          "cors": {
+            "allowedOrigins": "*",
+            "allowedMethods": ["POST", "OPTIONS"],
+            "allowedHeaders": ["Content-Type", "Authorization"]
+          }
+        }
+      },
+      "id": "webhook_chat",
+      "name": "Text Chat Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voice",
+        "responseMode": "responseNode",
+        "options": {
+          "cors": {
+            "allowedOrigins": "*",
+            "allowedMethods": ["POST", "OPTIONS"],
+            "allowedHeaders": ["Content-Type", "Authorization"]
+          },
+          "binaryData": true
+        }
+      },
+      "id": "webhook_voice",
+      "name": "Voice Chat Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 500],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "health",
+        "responseMode": "responseNode",
+        "options": {
+          "cors": {
+            "allowedOrigins": "*"
+          }
+        }
+      },
+      "id": "webhook_health",
+      "name": "Health Check",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 100],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "binaryPropertyName": "audio",
+        "options": {
+          "temperature": 0.2,
+          "language": "en"
+        }
+      },
+      "id": "transcribe",
+      "name": "Transcribe Audio (OpenAI)",
+      "type": "n8n-nodes-base.openAi",
+      "position": [450, 500],
+      "typeVersion": 1,
+      "credentials": {
+        "openAiApi": {
+          "id": "{{OPENAI_CREDENTIAL_ID}}",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "chat",
+        "model": "gpt-4",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are JARVIS, Tony Stark's AI assistant from the Iron Man movies. Your personality traits:\n\n1. British sophistication and formality\n2. Highly intelligent and technically knowledgeable\n3. Subtle wit and dry humor\n4. Loyal and protective\n5. Professional but with personality\n\nAddress the user as 'Sir' or 'Miss' appropriately. Keep responses concise but helpful (2-3 sentences unless more detail is requested). Include technical details when relevant. Occasionally reference the Iron Man universe naturally. Never break character."
+            },
+            {
+              "role": "user",
+              "content": "={{$json[\"message\"] || $json[\"transcription\"]}}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 500,
+          "topP": 0.9,
+          "frequencyPenalty": 0.5,
+          "presencePenalty": 0.5
+        }
+      },
+      "id": "ai_response",
+      "name": "Generate AI Response",
+      "type": "n8n-nodes-base.openAi",
+      "position": [650, 400],
+      "typeVersion": 1,
+      "credentials": {
+        "openAiApi": {
+          "id": "{{OPENAI_CREDENTIAL_ID}}",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "textToSpeech",
+        "text": "={{$json[\"message\"][\"content\"]}}",
+        "voiceId": "{{ELEVENLABS_VOICE_ID}}",
+        "modelId": "eleven_monolingual_v1",
+        "voiceSettings": {
+          "stability": 0.75,
+          "similarityBoost": 0.75,
+          "style": 0.5,
+          "useSpeakerBoost": true
+        },
+        "outputFormat": "mp3_44100_128"
+      },
+      "id": "generate_voice",
+      "name": "Generate Voice (ElevenLabs)",
+      "type": "n8n-nodes-community.elevenlabs",
+      "position": [850, 400],
+      "typeVersion": 1,
+      "credentials": {
+        "elevenLabsApi": {
+          "id": "{{ELEVENLABS_CREDENTIAL_ID}}",
+          "name": "ElevenLabs API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Store audio in temporary location and generate URL\nconst audioData = items[0].json.audio;\nconst audioUrl = `data:audio/mp3;base64,${audioData}`;\n\n// Alternative: If you have a file storage service, upload there\n// const audioUrl = await uploadToStorage(audioData);\n\nreturn [\n  {\n    json: {\n      text: items[0].json.message?.content || items[0].json.text,\n      audioUrl: audioUrl,\n      conversationId: items[0].json.conversationId,\n      transcription: items[0].json.transcription || null,\n      timestamp: new Date().toISOString()\n    }\n  }\n];"
+      },
+      "id": "format_response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "position": [1050, 400],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{JSON.stringify($json)}}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "values": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "send_response",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [1250, 400],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\":\"healthy\",\"timestamp\":\"{{new Date().toISOString()}}\",\"services\":{\"openai\":true,\"elevenlabs\":true}}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "values": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "health_response",
+      "name": "Health Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [450, 100],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "conversationId",
+              "value": "={{$json[\"conversationId\"]}}"
+            },
+            {
+              "name": "message",
+              "value": "={{$json[\"message\"]}}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{$json[\"timestamp\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract_text_data",
+      "name": "Extract Text Data",
+      "type": "n8n-nodes-base.set",
+      "position": [450, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "conversationId",
+              "value": "={{$json[\"conversationId\"]}}"
+            },
+            {
+              "name": "transcription",
+              "value": "={{$json[\"text\"]}}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{$json[\"timestamp\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract_voice_data",
+      "name": "Extract Voice Data",
+      "type": "n8n-nodes-base.set",
+      "position": [650, 500],
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Text Chat Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Text Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice Chat Webhook": {
+      "main": [
+        [
+          {
+            "node": "Transcribe Audio (OpenAI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Health Check": {
+      "main": [
+        [
+          {
+            "node": "Health Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text Data": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe Audio (OpenAI)": {
+      "main": [
+        [
+          {
+            "node": "Extract Voice Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Voice Data": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Response": {
+      "main": [
+        [
+          {
+            "node": "Generate Voice (ElevenLabs)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Voice (ElevenLabs)": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "jarvis-assistant"
+  },
+  "tags": []
+}
