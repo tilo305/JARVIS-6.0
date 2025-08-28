@@ -1,0 +1,703 @@
+{
+  "name": "ll",
+  "nodes": [
+    {
+      "parameters": {
+        "name": "emailAgent",
+        "description": "Call this tool for any email actions.",
+        "workflowId": {
+          "__rl": true,
+          "value": "6uxKmL0Sxo680rHv",
+          "mode": "list",
+          "cachedResultName": "Email_Agent."
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        848
+      ],
+      "id": "90ebe119-33ae-4ffd-9ca6-608db80c1288",
+      "name": "Email Agent"
+    },
+    {
+      "parameters": {
+        "name": "contactAgent",
+        "description": "Call this tool for any contact related actions.",
+        "workflowId": {
+          "__rl": true,
+          "value": "TGx3EpJmQNKg3Bsy",
+          "mode": "list",
+          "cachedResultName": "Contact Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        848
+      ],
+      "id": "a5c20e76-8fd6-4623-9a94-be6c6eb57058",
+      "name": "Contact Agent"
+    },
+    {
+      "parameters": {
+        "name": "contentCreator",
+        "description": "Call this tool to create blog posts.",
+        "workflowId": {
+          "__rl": true,
+          "value": "Hd1lLHetZKSO8HWz",
+          "mode": "list",
+          "cachedResultName": "Content_Creator"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        2544,
+        848
+      ],
+      "id": "77fc3f8a-83e5-455b-b910-081b468fc204",
+      "name": "Content Creator Agent"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Use this tool to search the internet",
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n    \"api_key\": \"YOUR-API-KEY\",\n    \"query\": \"{searchTerm}\",\n    \"search_depth\": \"basic\",\n    \"include_answer\": true,\n    \"topic\": \"news\",\n    \"include_raw_content\": true,\n    \"max_results\": 3\n} ",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "searchTerm",
+              "description": "What the user has requested to search the internet for",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        2016,
+        832
+      ],
+      "id": "fbc58a30-91f1-43cc-92d6-abbf67732852",
+      "name": "Tavily"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [
+        1888,
+        864
+      ],
+      "id": "1f2cc3ba-467a-46d7-b196-18c69447c434",
+      "name": "Calculator"
+    },
+    {
+      "parameters": {
+        "name": "calendarAgent",
+        "description": "Call this tool for any calendar action.",
+        "workflowId": {
+          "__rl": true,
+          "value": "u7mkolWMljwk05e9",
+          "mode": "list",
+          "cachedResultName": "Calendar Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        2272,
+        848
+      ],
+      "id": "51e27f55-50a6-4adc-a540-d52f9403a983",
+      "name": "Calendar Agent"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=User Query: {{ $json.body.query }}\nSession Context: {{ $json.sessionId || 'new-session' }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        1376,
+        256
+      ],
+      "id": "12c8690c-c024-4f6c-960f-74e38842aa27",
+      "name": "Jarvis"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionId || 'default-session' }}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1744,
+        544
+      ],
+      "id": "e3518238-f69d-428e-9edd-fdb28abe7e34",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "content": "# JARVIS Main Agent\n",
+        "height": 260,
+        "width": 380,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        64,
+        192
+      ],
+      "typeVersion": 1,
+      "id": "0061bfa3-27bb-4c51-9eaf-c2044b952db8",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "# Nate Herk | AI Automation",
+        "height": 100,
+        "width": 500,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "288ebc77-1b1a-4283-99e6-3f839a16ed5e",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "# Child Agents",
+        "height": 260,
+        "width": 864,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -272,
+        752
+      ],
+      "typeVersion": 1,
+      "id": "c11db68f-0d98-4795-9586-224f93d15505",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "# IMPORTANT\nMake sure to map the correct workflows in these child agents",
+        "height": 140,
+        "width": 280
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        768
+      ],
+      "id": "b4c7a1f2-d973-48f0-b097-d542b8360d0e",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        544
+      ],
+      "id": "5b599402-e103-4d88-a2de-9ee7faf66241",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "Re3TPq4R9fgqHetl",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "=# Overview\nYou are the ultimate personal assistant. Your job is to send the user's query to the correct tool. You should never be writing emails, or creating even summaries, you just need to call the correct tool.\n\n## Tools\n- emailAgent: Use this tool to take action in email\n- calendarAgent: Use this tool to take action in calendar\n- contactAgent: Use this tool to get, update, or add contacts\n- contentCreator: Use this tool to create blog posts\n- Tavily: Use this tool to search the web\n\n## Rules\n- Some actions require you to look up contact information first. For the following actions, you must get contact information and send that to the agent who needs it:\n  - sending emails\n  - drafting emails\n  - creating calendar event with attendee\n\n## Examples\n1) \n- Input: send an email to nate herkelman asking him what time he wants to leave\n  - Action: Use contactAgent to get nate herkelman's email\n  - Action: Use emailAgent to send the email. You will pass the tool a query like \"send nate herkelman an email to ask what time he wants to leave. here is his email: [email address]\n- Output: The email has been sent to Nate Herkelman. Anything else I can help you with?\n\n\n## Final Reminders\nHere is the current date/time: {{ $now }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 2.2,
+      "position": [
+        2464,
+        480
+      ],
+      "id": "d32f0de2-5cfa-4a46-995f-18cc0702d93b",
+      "name": "AI Agent Tool"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "tableName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        2768,
+        592
+      ],
+      "id": "8253fa54-5141-4994-8aa4-df9d112ed41c",
+      "name": "Supabase Vector Store",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        2256,
+        576
+      ],
+      "id": "ee9aa761-de15-4979-9f15-473c6fd71dc8",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "Re3TPq4R9fgqHetl",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "speech",
+        "voice": {
+          "__rl": true,
+          "mode": "id",
+          "value": "MDVSvwVsP5rjXJ2po49l"
+        },
+        "text": "={{ $json.output || $json.response || $json.text }}\n",
+        "additionalOptions": {},
+        "requestOptions": {}
+      },
+      "type": "@elevenlabs/n8n-nodes-elevenlabs.elevenLabs",
+      "typeVersion": 1,
+      "position": [
+        1808,
+        256
+      ],
+      "id": "9a3af69d-dfe7-481a-8bdb-9eed040e7eec",
+      "name": "Convert text to speech",
+      "credentials": {
+        "elevenLabsApi": {
+          "id": "POHgJHL460B1zHoy",
+          "name": "ElevenLabs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jarvis-text",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -416,
+        432
+      ],
+      "id": "153f5182-3f39-4710-94bf-d244cbe8a1bd",
+      "name": "jarvis-text",
+      "webhookId": "74a8375f-b683-46ba-b070-4362f109dbc0"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jarvis-voice",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -368,
+        192
+      ],
+      "id": "6bbbfa7d-e025-41f8-8b9a-67ff72c441fa",
+      "name": "jarvis-voice",
+      "webhookId": "dced53d2-e10e-4357-9d22-4f8db19efa7c"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2288,
+        240
+      ],
+      "id": "7d1f00ef-6d67-4e1c-8813-23c5e254b62b",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "resource": "speech",
+        "operation": "speechToText",
+        "file": "={{ $json.hasBinary }}{{ $json$json.binaryKeys.fileName }}{{ $json.mimeType }}{{ $json.fileSize }}",
+        "additionalOptions": {},
+        "requestOptions": {}
+      },
+      "type": "@elevenlabs/n8n-nodes-elevenlabs.elevenLabs",
+      "typeVersion": 1,
+      "position": [
+        160,
+        208
+      ],
+      "id": "67387e12-2806-479f-886a-f214689cb6b1",
+      "name": "Transcribe audio or video",
+      "credentials": {
+        "elevenLabsApi": {
+          "id": "POHgJHL460B1zHoy",
+          "name": "ElevenLabs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        432
+      ],
+      "id": "a23df510-52f2-48f1-9eb7-0c3453669c0f",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Debug: Log everything we receive\nconsole.log('=== WEBHOOK DEBUG ===');\nconsole.log('Input items:', $input.all().length);\n\nconst inputData = $input.all()[0];\nconsole.log('Binary keys:', Object.keys(inputData.binary || {}));\n\n// The audio is in the 'jarvis-voice' key based on your screenshot\nconst audioKey = 'jarvis-voice'; // This matches what we see in your binary data\nlet audioData = null;\n\nif (inputData.binary && inputData.binary[audioKey]) {\n  audioData = inputData.binary[audioKey];\n  console.log('✅ Found audio in binary.' + audioKey);\n  console.log('Audio file name:', audioData.fileName);\n  console.log('Audio mime type:', audioData.mimeType);\n  console.log('Audio file size:', audioData.fileSize);\n} else {\n  console.log('❌ Audio not found in expected location');\n  console.log('Available binary keys:', Object.keys(inputData.binary || {}));\n}\n\n// Return the data in the format the Transcribe node expects\nreturn [{\n  json: {\n    audioFound: audioData ? 'YES' : 'NO',\n    fileName: audioData ? audioData.fileName : 'unknown',\n    mimeType: audioData ? audioData.mimeType : 'unknown',\n    fileSize: audioData ? audioData.fileSize : 'unknown',\n    debugInfo: {\n      binaryKeys: Object.keys(inputData.binary || {}),\n      audioKey: audioKey\n    }\n  },\n  binary: {\n    data: audioData  // This puts the audio in $binary.data for the Transcribe node\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        192
+      ],
+      "id": "e7254b85-589b-4288-a617-ca72b749ebe7",
+      "name": "Code"
+    }
+  ],
+  "pinData": {
+    "jarvis-voice": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.hempstarai.com",
+            "x-forwarded-scheme": "https",
+            "x-forwarded-proto": "https",
+            "x-forwarded-for": "2600:1700:3e00:2060:f96b:545a:33d8:fceb, 172.70.82.203",
+            "x-real-ip": "172.70.82.203",
+            "content-length": "96240",
+            "priority": "u=1, i",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+            "accept": "application/json, text/plain, */*",
+            "sec-ch-ua": "\"Not;A=Brand\";v=\"99\", \"Google Chrome\";v=\"139\", \"Chromium\";v=\"139\"",
+            "content-type": "multipart/form-data; boundary=----WebKitFormBoundaryzfXkbG3I4eTJYrqQ",
+            "sec-ch-ua-mobile": "?0",
+            "origin": "http://localhost:3000",
+            "sec-fetch-site": "cross-site",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-dest": "empty",
+            "referer": "http://localhost:3000/",
+            "accept-encoding": "gzip, br",
+            "accept-language": "en-US,en;q=0.9",
+            "cf-ray": "975f5f6e0d857464-MIA",
+            "cdn-loop": "cloudflare; loops=1",
+            "cf-connecting-ip": "2600:1700:3e00:2060:f96b:545a:33d8:fceb",
+            "cf-ipcountry": "US",
+            "cf-visitor": "{\"scheme\":\"https\"}"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "conversationId": "1756337564213_ipucwu429",
+            "timestamp": "2025-08-27T23:33:15.394Z"
+          },
+          "webhookUrl": "https://n8n.hempstarai.com/webhook/jarvis-voice",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Email Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Tool",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contact Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Tool",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Content Creator Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Tool",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Tool",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculator": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Tool",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Tool",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jarvis": {
+      "main": [
+        [
+          {
+            "node": "Convert text to speech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Jarvis",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Jarvis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Jarvis",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Tool",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent Tool",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert text to speech": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "jarvis-text": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "jarvis-voice": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe audio or video": {
+      "main": [
+        [
+          {
+            "node": "Jarvis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Jarvis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Transcribe audio or video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8c5258af-4608-49bf-b8d1-7613918d54d4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "718c5fd7a71f7a10e783dcbe1b880dfe275016f44ee416678a938dc5392af102"
+  },
+  "id": "ZbfhrZSyju5SVQqQ",
+  "tags": []
+}

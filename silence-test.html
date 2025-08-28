@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Silence Detection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            background: #333;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button.recording {
+            background: #dc3545;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            background: #444;
+            border-radius: 5px;
+        }
+        .audio-level {
+            font-weight: bold;
+            color: #00ff00;
+        }
+        .silence-timer {
+            color: #ff6b6b;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎤 Silence Detection Test</h1>
+    
+    <div class="test-section">
+        <h3>Test 1: Basic Silence Detection</h3>
+        <button id="recordBtn">Start Recording</button>
+        <button id="stopBtn" disabled>Stop Recording</button>
+        
+        <div class="status">
+            <div>Status: <span id="status">Ready</span></div>
+            <div>Duration: <span id="duration">0:00</span></div>
+            <div>Audio Level: <span id="audioLevel" class="audio-level">0</span></div>
+            <div>Silence Timer: <span id="silenceTimer" class="silence-timer">Not active</span></div>
+        </div>
+        
+        <audio id="audioPlayer" controls style="width: 100%; margin-top: 10px;"></audio>
+    </div>
+
+    <div class="test-section">
+        <h3>Instructions:</h3>
+        <ol>
+            <li>Click "Start Recording" to begin</li>
+            <li>Speak for a few seconds</li>
+            <li>Stop speaking and stay quiet for 2+ seconds</li>
+            <li>Watch the silence timer count down</li>
+            <li>Recording should auto-stop after 2 seconds of silence</li>
+        </ol>
+    </div>
+
+    <script>
+        class SilenceDetector {
+            constructor() {
+                this.isRecording = false;
+                this.mediaRecorder = null;
+                this.stream = null;
+                this.audioContext = null;
+                this.analyser = null;
+                this.dataArray = null;
+                this.silenceTimer = null;
+                this.silenceCheckInterval = null;
+                this.durationTimer = null;
+                this.startTime = 0;
+                this.chunks = [];
+                
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                document.getElementById('recordBtn').addEventListener('click', () => this.startRecording());
+                document.getElementById('stopBtn').addEventListener('click', () => this.stopRecording());
+            }
+
+            async startRecording() {
+                try {
+                    // Request microphone access
+                    this.stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        } 
+                    });
+
+                    // Set up audio analysis for silence detection
+                    this.audioContext = new AudioContext();
+                    this.analyser = this.audioContext.createAnalyser();
+                    this.analyser.fftSize = 256;
+                    this.analyser.smoothingTimeConstant = 0.8;
+                    this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+                    
+                    const source = this.audioContext.createMediaStreamSource(this.stream);
+                    source.connect(this.analyser);
+
+                    // Create MediaRecorder
+                    this.mediaRecorder = new MediaRecorder(this.stream);
+                    this.chunks = [];
+
+                    this.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            this.chunks.push(event.data);
+                        }
+                    };
+
+                    this.mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(this.chunks, { type: 'audio/webm' });
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        document.getElementById('audioPlayer').src = audioUrl;
+                    };
+
+                    // Start recording
+                    this.mediaRecorder.start(100);
+                    this.isRecording = true;
+                    this.startTime = Date.now();
+
+                    // Update UI
+                    document.getElementById('recordBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    document.getElementById('recordBtn').classList.add('recording');
+                    document.getElementById('status').textContent = 'Recording...';
+
+                    // Start duration timer
+                    this.durationTimer = setInterval(() => {
+                        const duration = Date.now() - this.startTime;
+                        const seconds = Math.floor(duration / 1000);
+                        const minutes = Math.floor(seconds / 60);
+                        const remainingSeconds = seconds % 60;
+                        document.getElementById('duration').textContent = 
+                            `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+                    }, 100);
+
+                    // Start silence detection
+                    this.silenceCheckInterval = setInterval(() => this.checkSilence(), 200);
+
+                    console.log('Recording started with silence detection');
+
+                } catch (error) {
+                    console.error('Error starting recording:', error);
+                    alert('Error accessing microphone: ' + error.message);
+                }
+            }
+
+            checkSilence() {
+                if (!this.analyser || !this.dataArray) return;
+
+                this.analyser.getByteFrequencyData(this.dataArray);
+                
+                // Calculate average volume
+                const average = this.dataArray.reduce((sum, value) => sum + value, 0) / this.dataArray.length;
+                
+                // Update audio level display
+                document.getElementById('audioLevel').textContent = average.toFixed(1);
+                
+                console.log('Audio level:', average);
+                
+                // If volume is very low (silence), start silence timer
+                if (average < 15) {
+                    if (!this.silenceTimer) {
+                        console.log('Silence detected, starting 2-second timer');
+                        document.getElementById('silenceTimer').textContent = '2 seconds remaining...';
+                        
+                        this.silenceTimer = setTimeout(() => {
+                            console.log('Silence detected for 2 seconds, auto-stopping');
+                            document.getElementById('silenceTimer').textContent = 'Auto-stopping...';
+                            this.stopRecording();
+                        }, 2000);
+                    } else {
+                        // Update countdown
+                        const remaining = Math.ceil((2000 - (Date.now() - (this.startTime + this.durationTimer ? Date.now() - this.startTime : 0))) / 1000);
+                        if (remaining > 0) {
+                            document.getElementById('silenceTimer').textContent = `${remaining} seconds remaining...`;
+                        }
+                    }
+                } else {
+                    // Reset silence timer if there's sound
+                    if (this.silenceTimer) {
+                        console.log('Sound detected, resetting silence timer');
+                        clearTimeout(this.silenceTimer);
+                        this.silenceTimer = null;
+                        document.getElementById('silenceTimer').textContent = 'Not active';
+                    }
+                }
+            }
+
+            stopRecording() {
+                // Clear timers
+                if (this.durationTimer) {
+                    clearInterval(this.durationTimer);
+                    this.durationTimer = null;
+                }
+
+                if (this.silenceTimer) {
+                    clearTimeout(this.silenceTimer);
+                    this.silenceTimer = null;
+                }
+
+                if (this.silenceCheckInterval) {
+                    clearInterval(this.silenceCheckInterval);
+                    this.silenceCheckInterval = null;
+                }
+
+                // Stop recording
+                if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                    this.mediaRecorder.stop();
+                }
+
+                // Stop all tracks
+                if (this.stream) {
+                    this.stream.getTracks().forEach(track => track.stop());
+                    this.stream = null;
+                }
+
+                if (this.audioContext) {
+                    this.audioContext.close();
+                    this.audioContext = null;
+                }
+
+                // Update UI
+                this.isRecording = false;
+                document.getElementById('recordBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('recordBtn').classList.remove('recording');
+                document.getElementById('status').textContent = 'Stopped';
+                document.getElementById('silenceTimer').textContent = 'Not active';
+
+                console.log('Recording stopped');
+            }
+        }
+
+        // Initialize the silence detector
+        const silenceDetector = new SilenceDetector();
+    </script>
+</body>
+</html>

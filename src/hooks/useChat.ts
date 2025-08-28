@@ -117,15 +117,15 @@ export const useChat = () => {
     }
   }, [conversationId, isProcessing, addMessage, api]);
 
-  const sendVoiceMessage = useCallback(async () => {
+  const sendVoiceMessage = useCallback(async (audioBlob: Blob) => {
     if (isProcessing) return;
 
     setError(null);
     setIsProcessing(true);
 
     try {
-      // Call the voice webhook to trigger voice input processing
-      const response = await api.sendVoiceMessage(new Blob(), conversationId);
+      // Send the actual audio blob to the voice webhook
+      const response = await api.sendVoiceMessage(audioBlob, conversationId);
       
       // Add JARVIS response
       const jarvisMessage = addMessage(response.text, 'jarvis', response.audioUrl);

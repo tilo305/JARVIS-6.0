@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Recording Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border: 1px solid #00d4ff;
+        }
+        .voice-button {
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            border: none;
+            border-radius: 50px;
+            padding: 15px 30px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+        .voice-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.4);
+        }
+        .voice-button.recording {
+            background: linear-gradient(135deg, #ff4444, #cc3333);
+            animation: pulse 1s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background: #333;
+        }
+        .recording-status {
+            background: #ff4444;
+        }
+        .success-status {
+            background: #00aa00;
+        }
+        .error-status {
+            background: #aa0000;
+        }
+        audio {
+            width: 100%;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎤 Voice Recording Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Basic Voice Recording</h2>
+        <button id="recordBtn" class="voice-button">🎤 Hold to Record</button>
+        <div id="status" class="status">Click and hold the button to start recording</div>
+        <div id="duration"></div>
+        <audio id="audioPlayer" controls style="display: none;"></audio>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Voice Recording with Visual Feedback</h2>
+        <button id="recordBtn2" class="voice-button">🎤 Hold to Record</button>
+        <div id="status2" class="status">Click and hold the button to start recording</div>
+        <div id="duration2"></div>
+        <audio id="audioPlayer2" controls style="display: none;"></audio>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        class VoiceRecorder {
+            constructor(buttonId, statusId, durationId, audioPlayerId) {
+                this.button = document.getElementById(buttonId);
+                this.status = document.getElementById(statusId);
+                this.duration = document.getElementById(durationId);
+                this.audioPlayer = document.getElementById(audioPlayerId);
+                
+                this.isRecording = false;
+                this.mediaRecorder = null;
+                this.stream = null;
+                this.chunks = [];
+                this.startTime = 0;
+                this.timer = null;
+                
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                this.button.addEventListener('mousedown', () => this.startRecording());
+                this.button.addEventListener('mouseup', () => this.stopRecording());
+                this.button.addEventListener('mouseleave', () => this.stopRecording());
+                
+                // Touch events for mobile
+                this.button.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    this.startRecording();
+                });
+                this.button.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    this.stopRecording();
+                });
+            }
+
+            async startRecording() {
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true,
+                            sampleRate: 44100,
+                        } 
+                    });
+
+                    this.mediaRecorder = new MediaRecorder(this.stream);
+                    this.chunks = [];
+                    this.startTime = Date.now();
+
+                    this.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            this.chunks.push(event.data);
+                        }
+                    };
+
+                    this.mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(this.chunks, { type: 'audio/webm' });
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        this.audioPlayer.src = audioUrl;
+                        this.audioPlayer.style.display = 'block';
+                        
+                        // Clean up stream
+                        if (this.stream) {
+                            this.stream.getTracks().forEach(track => track.stop());
+                            this.stream = null;
+                        }
+                    };
+
+                    this.mediaRecorder.start(100);
+                    this.isRecording = true;
+                    this.button.classList.add('recording');
+                    this.status.textContent = 'Recording... Release to stop';
+                    this.status.className = 'status recording-status';
+
+                    // Start duration timer
+                    this.timer = setInterval(() => {
+                        const duration = Date.now() - this.startTime;
+                        this.duration.textContent = `Duration: ${Math.floor(duration / 1000)}s`;
+                    }, 100);
+
+                } catch (error) {
+                    console.error('Error accessing microphone:', error);
+                    this.status.textContent = `Error: ${error.message}`;
+                    this.status.className = 'status error-status';
+                }
+            }
+
+            stopRecording() {
+                if (!this.isRecording) return;
+
+                if (this.timer) {
+                    clearInterval(this.timer);
+                    this.timer = null;
+                }
+
+                if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                    this.mediaRecorder.stop();
+                }
+
+                this.isRecording = false;
+                this.button.classList.remove('recording');
+                this.status.textContent = 'Recording stopped. Audio ready to play.';
+                this.status.className = 'status success-status';
+                this.duration.textContent = '';
+
+                // Log results
+                this.logResults();
+            }
+
+            logResults() {
+                const resultsDiv = document.getElementById('results');
+                const resultItem = document.createElement('div');
+                resultItem.style.cssText = 'background: #444; padding: 10px; margin: 10px 0; border-radius: 5px;';
+                resultItem.innerHTML = `
+                    <strong>Test completed:</strong> ${new Date().toLocaleTimeString()}<br>
+                    <strong>Recording duration:</strong> ${Math.floor((Date.now() - this.startTime) / 1000)}s<br>
+                    <strong>Audio format:</strong> WebM<br>
+                    <strong>Status:</strong> Success ✅
+                `;
+                resultsDiv.appendChild(resultItem);
+            }
+        }
+
+        // Initialize voice recorders
+        const recorder1 = new VoiceRecorder('recordBtn', 'status', 'duration', 'audioPlayer');
+        const recorder2 = new VoiceRecorder('recordBtn2', 'status2', 'duration2', 'audioPlayer2');
+
+        // Test microphone permission on load
+        window.addEventListener('load', async () => {
+            try {
+                const permission = await navigator.permissions.query({ name: 'microphone' });
+                console.log('Microphone permission status:', permission.state);
+                
+                if (permission.state === 'denied') {
+                    document.body.innerHTML += '<div style="background: #aa0000; color: white; padding: 20px; margin: 20px 0; border-radius: 10px;"><strong>⚠️ Microphone Access Denied</strong><br>Please allow microphone access in your browser settings to test voice recording.</div>';
+                }
+            } catch (error) {
+                console.log('Permission API not supported');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -96,7 +96,7 @@ export class JarvisAPI {
 
     try {
       const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
+      formData.append('data', audioBlob, 'recording.webm');
       formData.append('conversationId', conversationId || this.generateConversationId());
       formData.append('timestamp', new Date().toISOString());
 

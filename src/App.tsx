@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { ChatInterface } from './components/ChatInterface';
+import { VoiceRecorder } from './components/VoiceRecorder';
 import { useChat } from './hooks/useChat';
 import { JarvisAPI } from './services/api';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -46,6 +47,17 @@ function App() {
     };
   }, []);
 
+  // Handle voice recording completion
+  const handleVoiceRecordingComplete = async (audioBlob: Blob) => {
+    if (audioBlob && audioBlob.size > 0) {
+      try {
+        await sendVoiceMessage(audioBlob);
+      } catch (error) {
+        console.error('Error processing voice message:', error);
+      }
+    }
+  };
+
   return (
     <ErrorBoundary>
       <div className="jarvis-app">
@@ -58,7 +70,7 @@ function App() {
           playsInline
           className="hero-video"
         >
-          <source src="/Ironman WEBM.webm" type="video/webm" />
+          <source src="/Ironman-WEBM.webm" type="video/webm" />
           Your browser does not support the video tag.
         </video>
         
@@ -116,21 +128,11 @@ function App() {
                 disabled={isProcessing}
               />
               
-              {/* Voice Input Button - Activates n8n Voice Webhook */}
-              <button
-                className={`voice-button ${isProcessing ? 'processing' : ''}`}
-                onClick={() => {
-                  // Activate the voice webhook to trigger voice input processing
-                  sendVoiceMessage();
-                }}
-                disabled={isProcessing}
-                title="Click to activate voice input via n8n webhook"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-                <span className="voice-button-text">Voice</span>
-              </button>
+              {/* Voice Recorder Component - Full Voice Recording Functionality */}
+              <VoiceRecorder
+                onRecordingComplete={handleVoiceRecordingComplete}
+                isProcessing={isProcessing}
+              />
             </div>
           </div>
 
